@@ -18,6 +18,7 @@ export function CheckoutDialog({ open, cart, submitting, user, onClose, onSubmit
     receiverName: user.displayName,
     receiverPhone: user.phone,
     shippingAddress: user.address,
+    remark: "",
   });
 
   useEffect(() => {
@@ -29,7 +30,7 @@ export function CheckoutDialog({ open, cart, submitting, user, onClose, onSubmit
 
   useEffect(() => {
     if (open) {
-      setForm({ receiverName: user.displayName, receiverPhone: user.phone, shippingAddress: user.address });
+      setForm({ receiverName: user.displayName, receiverPhone: user.phone, shippingAddress: user.address, remark: "" });
     }
   }, [open, user]);
 
@@ -53,8 +54,8 @@ export function CheckoutDialog({ open, cart, submitting, user, onClose, onSubmit
 
         <div className="checkout-products">
           <MapPin size={18} />
-          <span>{cart.itemCount} 件商品</span>
-          <strong>¥{cart.totalAmount.toFixed(2)}</strong>
+          <span>{cart.selectedItemCount} 件商品</span>
+          <strong>¥{cart.selectedTotalAmount.toFixed(2)}</strong>
         </div>
 
         <label>
@@ -64,6 +65,16 @@ export function CheckoutDialog({ open, cart, submitting, user, onClose, onSubmit
             maxLength={50}
             value={form.receiverName}
             onChange={(event) => setForm({ ...form, receiverName: event.target.value })}
+          />
+        </label>
+        <label>
+          <span>订单备注</span>
+          <textarea
+            maxLength={500}
+            rows={2}
+            value={form.remark || ""}
+            onChange={(event) => setForm({ ...form, remark: event.target.value })}
+            placeholder="选填，例如发票抬头或配送要求"
           />
         </label>
         <label>
@@ -89,7 +100,7 @@ export function CheckoutDialog({ open, cart, submitting, user, onClose, onSubmit
         <footer className="dialog-actions">
           <button className="secondary-button" type="button" onClick={onClose}>返回购物车</button>
           <button className="primary-button" type="submit" disabled={submitting}>
-            {submitting ? "正在提交" : `提交订单 ¥${cart.totalAmount.toFixed(2)}`}
+            {submitting ? "正在提交" : `提交订单 ¥${cart.selectedTotalAmount.toFixed(2)}`}
           </button>
         </footer>
       </form>

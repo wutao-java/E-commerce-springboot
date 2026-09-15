@@ -6,10 +6,11 @@ type ProductCardProps = {
   product: Product;
   busy: boolean;
   onAdd: (productId: number) => void;
+  onBuy: (product: Product) => void;
   onView: (product: Product) => void;
 };
 
-export function ProductCard({ product, busy, onAdd, onView }: ProductCardProps) {
+export function ProductCard({ product, busy, onAdd, onBuy, onView }: ProductCardProps) {
   return (
     <article className="product-card">
       <div className="product-image-wrap">
@@ -22,6 +23,12 @@ export function ProductCard({ product, busy, onAdd, onView }: ProductCardProps) 
           <span className="stock-text">库存 {product.stock}</span>
         </div>
         <p>{product.description}</p>
+        {product.promotion && (
+          <div className={`promotion-strip ${product.promotionApplied ? "applied" : "locked"}`}>
+            <strong>{product.promotion.promotionName}</strong>
+            <span>{product.promotionCondition || product.promotion.discountSummary}</span>
+          </div>
+        )}
         <div className="product-footer">
           <div className="price-stack">
             <strong>¥{product.salePrice.toFixed(2)}</strong>
@@ -41,6 +48,14 @@ export function ProductCard({ product, busy, onAdd, onView }: ProductCardProps) 
             >
               {product.stock === 0 ? <ShoppingBag size={18} /> : <Plus size={18} />}
               <span>{product.stock === 0 ? "售罄" : "加入"}</span>
+            </button>
+            <button
+              className="secondary-button compact-button"
+              type="button"
+              disabled={busy || product.stock === 0}
+              onClick={() => onBuy(product)}
+            >
+              立即购买
             </button>
           </div>
         </div>

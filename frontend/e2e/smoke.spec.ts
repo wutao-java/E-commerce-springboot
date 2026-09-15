@@ -38,11 +38,29 @@ test("买家商城和管理员工作区可用", async ({ page }, testInfo) => {
   await page.locator(".view-button").first().click();
   await expect(page.locator(".detail-dialog").getByRole("heading", { name: "Flow 机械键盘" })).toBeVisible();
   await page.locator(".detail-dialog").getByRole("button", { name: "关闭" }).click();
+  await page.locator(".product-card").first().getByRole("button", { name: "立即购买" }).click();
+  await expect(page.getByRole("heading", { name: "填写收货信息" })).toBeVisible();
+  await expect(page.locator(".checkout-products")).toContainText("1 件商品");
+  await page.locator(".checkout-dialog").getByRole("button", { name: "关闭" }).click();
+  await page.getByRole("button", { name: "咨询客服" }).click();
+  await expect(page.locator(".service-drawer")).toBeVisible();
+  await page.getByRole("button", { name: "关闭客服" }).click();
+  await page.getByRole("button", { name: "服务", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "服务政策与常见问题" })).toBeVisible();
+  await expect(page.locator(".policy-item")).toHaveCount(3);
+  await page.getByRole("button", { name: "商品", exact: true }).click();
   await page.getByRole("button", { name: "将Flow 机械键盘加入购物车" }).click();
   await expect(page.locator(".cart-panel")).toHaveCount(0);
   await page.getByRole("navigation", { name: "主导航" }).getByRole("button", { name: /^购物车(?: \d+)?$/ }).click();
   await expect(page.getByRole("heading", { name: "购物车" })).toBeVisible();
   await expect(page.locator(".cart-item")).toHaveCount(1);
+  const cartSelection = page.getByRole("checkbox", { name: "选择Flow 机械键盘" });
+  await cartSelection.click();
+  await expect(cartSelection).not.toBeChecked();
+  await expect(page.getByRole("button", { name: "确认订单" })).toBeDisabled();
+  await cartSelection.click();
+  await expect(cartSelection).toBeChecked();
+  await expect(page.getByRole("button", { name: "确认订单" })).toBeEnabled();
   await page.getByRole("button", { name: "移除Flow 机械键盘" }).click();
   await expect(page.locator(".cart-item")).toHaveCount(0);
   await page.getByRole("button", { name: "订单", exact: true }).click();
@@ -64,6 +82,9 @@ test("买家商城和管理员工作区可用", async ({ page }, testInfo) => {
   await page.getByRole("button", { name: "商品", exact: true }).click();
   await expect(page.getByRole("heading", { name: "商品管理" })).toBeVisible();
   await expect(page.getByText("Flow 机械键盘")).toBeVisible();
+  await page.getByRole("button", { name: "活动", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "活动管理" })).toBeVisible();
+  await expect(page.getByText("开学数码焕新").first()).toBeVisible();
   await page.getByRole("button", { name: "订单", exact: true }).click();
   await expect(page.getByRole("heading", { name: "订单管理" })).toBeVisible();
   await page.getByRole("button", { name: "售后", exact: true }).click();
@@ -123,6 +144,12 @@ test("不同订单状态显示可用的售后类型且弹窗响应式可用", as
           createdAt: "2026-09-14T09:00:00",
           updatedAt: "2026-09-14T10:00:00",
           items: [],
+          paymentStatus: "PAID",
+          fulfillmentStatus: "PENDING_SHIPMENT",
+          remark: "",
+          logisticsEvents: [],
+          afterSaleAvailable: true,
+          availableAfterSaleTypes: ["REFUND_ONLY", "CANCEL_ORDER"],
         }, {
           id: 999,
           orderNo: "EC-AFTER-SALE-VISUAL",
@@ -139,6 +166,12 @@ test("不同订单状态显示可用的售后类型且弹窗响应式可用", as
           createdAt: "2026-09-14T09:00:00",
           updatedAt: "2026-09-14T12:00:00",
           items: [],
+          paymentStatus: "PAID",
+          fulfillmentStatus: "DELIVERED",
+          remark: "",
+          logisticsEvents: [],
+          afterSaleAvailable: true,
+          availableAfterSaleTypes: ["REFUND_ONLY", "RETURN_REFUND", "COMPENSATION"],
         }],
       }),
     });
@@ -149,13 +182,15 @@ test("不同订单状态显示可用的售后类型且弹窗响应式可用", as
   const paidOrder = page.locator(".order-card").filter({ hasText: "EC-AFTER-SALE-PAID" });
   await paidOrder.getByRole("button", { name: "申请售后" }).click();
   await expect(page.getByRole("button", { name: "仅退款" })).toHaveAttribute("aria-pressed", "true");
-  await expect(page.getByRole("button", { name: "退货退款" })).toBeDisabled();
+  await expect(page.getByRole("button", { name: "取消订单" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "退货退款" })).toHaveCount(0);
   await page.getByRole("button", { name: "关闭" }).click();
 
   const completedOrder = page.locator(".order-card").filter({ hasText: "EC-AFTER-SALE-VISUAL" });
   await completedOrder.getByRole("button", { name: "申请售后" }).click();
   await expect(page.getByRole("heading", { name: "申请售后" })).toBeVisible();
   await expect(page.getByRole("button", { name: "仅退款" })).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByRole("button", { name: "物流补偿" })).toBeVisible();
   await page.getByRole("button", { name: "退货退款" }).click();
   await expect(page.getByRole("button", { name: "退货退款" })).toHaveAttribute("aria-pressed", "true");
   await expectNoPageOverflow(page);

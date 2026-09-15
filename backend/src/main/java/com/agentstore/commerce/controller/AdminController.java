@@ -4,9 +4,13 @@ import com.agentstore.commerce.domain.OrderStatus;
 import com.agentstore.commerce.dto.ApiModels.AfterSaleResponse;
 import com.agentstore.commerce.dto.ApiModels.BalanceAdjustRequest;
 import com.agentstore.commerce.dto.ApiModels.ConfirmReceiptRequest;
+import com.agentstore.commerce.dto.ApiModels.LogisticsEventRequest;
+import com.agentstore.commerce.dto.ApiModels.NeedMoreInfoRequest;
 import com.agentstore.commerce.dto.ApiModels.OrderResponse;
 import com.agentstore.commerce.dto.ApiModels.ProductResponse;
 import com.agentstore.commerce.dto.ApiModels.ProductSaveRequest;
+import com.agentstore.commerce.dto.ApiModels.PromotionResponse;
+import com.agentstore.commerce.dto.ApiModels.PromotionSaveRequest;
 import com.agentstore.commerce.dto.ApiModels.RegisterRequest;
 import com.agentstore.commerce.dto.ApiModels.ReviewAfterSaleRequest;
 import com.agentstore.commerce.dto.ApiModels.ShipOrderRequest;
@@ -56,6 +60,25 @@ public class AdminController {
         return ApiResponse.success(adminService.updateProduct(productId, request));
     }
 
+    @Operation(summary = "查询促销活动")
+    @GetMapping("/promotions")
+    public ApiResponse<List<PromotionResponse>> listPromotions() {
+        return ApiResponse.success(adminService.listPromotions());
+    }
+
+    @Operation(summary = "创建促销活动")
+    @PostMapping("/promotions")
+    public ApiResponse<PromotionResponse> createPromotion(@Valid @RequestBody PromotionSaveRequest request) {
+        return ApiResponse.success(adminService.createPromotion(request));
+    }
+
+    @Operation(summary = "修改促销活动")
+    @PutMapping("/promotions/{promotionId}")
+    public ApiResponse<PromotionResponse> updatePromotion(
+        @PathVariable Long promotionId, @Valid @RequestBody PromotionSaveRequest request) {
+        return ApiResponse.success(adminService.updatePromotion(promotionId, request));
+    }
+
     @Operation(summary = "查询全部订单")
     @GetMapping("/orders")
     public ApiResponse<List<OrderResponse>> listOrders(
@@ -71,6 +94,13 @@ public class AdminController {
         return ApiResponse.success(adminService.shipOrder(orderNo, request));
     }
 
+    @Operation(summary = "追加物流轨迹")
+    @PostMapping("/orders/{orderNo}/logistics-events")
+    public ApiResponse<OrderResponse> addLogisticsEvent(
+        @PathVariable String orderNo, @Valid @RequestBody LogisticsEventRequest request) {
+        return ApiResponse.success(adminService.addLogisticsEvent(orderNo, request));
+    }
+
     @Operation(summary = "查询全部售后申请")
     @GetMapping("/after-sales")
     public ApiResponse<List<AfterSaleResponse>> listAfterSales() {
@@ -82,6 +112,13 @@ public class AdminController {
     public ApiResponse<AfterSaleResponse> reviewAfterSale(
         @PathVariable Long afterSaleId, @Valid @RequestBody ReviewAfterSaleRequest request) {
         return ApiResponse.success(adminService.reviewAfterSale(afterSaleId, request));
+    }
+
+    @Operation(summary = "要求买家补充售后材料")
+    @PostMapping("/after-sales/{afterSaleId}/need-more-info")
+    public ApiResponse<AfterSaleResponse> requestMoreInfo(
+        @PathVariable Long afterSaleId, @Valid @RequestBody NeedMoreInfoRequest request) {
+        return ApiResponse.success(adminService.requestAfterSaleInfo(afterSaleId, request.remark()));
     }
 
     @Operation(summary = "确认收到售后退货")

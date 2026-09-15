@@ -14,8 +14,17 @@ CREATE TABLE IF NOT EXISTS `users` (
     `role` VARCHAR(20) NOT NULL COMMENT '用户角色: CUSTOMER-普通用户, ADMIN-管理员',
     `balance` DECIMAL(12, 2) NOT NULL DEFAULT 0.00 COMMENT '账户余额',
     `created_at` DATETIME(6) NOT NULL COMMENT '创建时间',
+    `business_user_id` VARCHAR(30) NULL COMMENT '课程业务用户编号',
+    `member_level` VARCHAR(20) NOT NULL DEFAULT 'normal' COMMENT '会员等级',
+    `risk_level` VARCHAR(20) NOT NULL DEFAULT 'low' COMMENT '风险等级',
+    `preferred_categories` VARCHAR(300) NOT NULL DEFAULT '' COMMENT '偏好品类',
+    `preferred_delivery` VARCHAR(100) NOT NULL DEFAULT '' COMMENT '偏好配送方式',
+    `budget_min` DECIMAL(12, 2) NULL COMMENT '预算下限',
+    `budget_max` DECIMAL(12, 2) NULL COMMENT '预算上限',
+    `invoice_required` BIT(1) NOT NULL DEFAULT b'0' COMMENT '是否需要发票',
     PRIMARY KEY (`id`),
-    UNIQUE KEY `uk_users_username` (`username`)
+    UNIQUE KEY `uk_users_username` (`username`),
+    UNIQUE KEY `uk_users_business_user_id` (`business_user_id`)
 ) ENGINE = InnoDB DEFAULT CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci;
 
 CREATE TABLE IF NOT EXISTS `products` (
@@ -29,6 +38,10 @@ CREATE TABLE IF NOT EXISTS `products` (
     `stock` INT NOT NULL COMMENT '商品库存数量',
     `image_url` VARCHAR(500) NOT NULL COMMENT '商品图片地址',
     `active` BIT(1) NOT NULL COMMENT '是否上架: 1-是, 0-否',
+    `highlights` VARCHAR(500) NOT NULL DEFAULT '' COMMENT '商品亮点',
+    `supports_seven_day_return` BIT(1) NOT NULL DEFAULT b'1' COMMENT '是否支持七天无理由退货',
+    `after_sale_note` VARCHAR(500) NOT NULL DEFAULT '' COMMENT '售后说明',
+    `scenario_tags` VARCHAR(300) NOT NULL DEFAULT '' COMMENT '适用场景标签',
     PRIMARY KEY (`id`),
     UNIQUE KEY `uk_products_sku` (`sku`),
     KEY `idx_products_active_category` (`active`, `category`)
@@ -39,6 +52,7 @@ CREATE TABLE IF NOT EXISTS `cart_items` (
     `user_id` BIGINT NOT NULL COMMENT '用户ID',
     `product_id` BIGINT NOT NULL COMMENT '商品ID',
     `quantity` INT NOT NULL COMMENT '商品数量',
+    `selected` BIT(1) NOT NULL DEFAULT b'1' COMMENT '是否选中结算',
     PRIMARY KEY (`id`),
     UNIQUE KEY `uk_cart_user_product` (`user_id`, `product_id`),
     KEY `idx_cart_product` (`product_id`)
@@ -49,11 +63,14 @@ CREATE TABLE IF NOT EXISTS `customer_orders` (
     `order_no` VARCHAR(40) NOT NULL COMMENT '订单编号',
     `user_id` BIGINT NOT NULL COMMENT '下单用户ID',
     `status` VARCHAR(30) NOT NULL COMMENT '订单状态: PENDING_PAYMENT-待支付, PAID-已支付, SHIPPED-已发货, COMPLETED-已完成, AFTER_SALE-售后中, REFUNDED-已退款, CANCELED-已取消',
+    `payment_status` VARCHAR(20) NOT NULL DEFAULT 'UNPAID' COMMENT '支付状态',
+    `fulfillment_status` VARCHAR(30) NOT NULL DEFAULT 'PENDING_SHIPMENT' COMMENT '履约状态',
     `total_amount` DECIMAL(12, 2) NOT NULL COMMENT '订单总金额',
     `receiver_name` VARCHAR(50) NOT NULL COMMENT '收货人姓名',
     `receiver_phone` VARCHAR(30) NOT NULL COMMENT '收货人联系电话',
     `shipping_address` VARCHAR(300) NOT NULL COMMENT '收货地址',
     `tracking_no` VARCHAR(80) NULL COMMENT '物流单号',
+    `remark` VARCHAR(500) NULL COMMENT '订单备注',
     `paid_at` DATETIME(6) NULL COMMENT '支付时间',
     `shipped_at` DATETIME(6) NULL COMMENT '发货时间',
     `completed_at` DATETIME(6) NULL COMMENT '订单完成时间',
@@ -97,13 +114,14 @@ CREATE TABLE IF NOT EXISTS `after_sales` (
     `order_id` BIGINT NOT NULL COMMENT '订单ID',
     `order_no` VARCHAR(40) NOT NULL COMMENT '订单编号',
     `user_id` BIGINT NOT NULL COMMENT '申请用户ID',
-    `after_sale_type` VARCHAR(20) NOT NULL COMMENT '售后类型: REFUND_ONLY-仅退款, RETURN_REFUND-退货退款',
-    `status` VARCHAR(20) NOT NULL COMMENT '售后状态: PENDING-待审核, WAITING_RETURN-待退货, WAITING_RECEIPT-待收货, APPROVED-已通过, REJECTED-已拒绝',
+    `after_sale_type` VARCHAR(20) NOT NULL COMMENT '售后类型: REFUND_ONLY-仅退款, RETURN_REFUND-退货退款, COMPENSATION-物流补偿, CANCEL_ORDER-取消订单',
+    `status` VARCHAR(20) NOT NULL COMMENT '售后状态: PENDING-待审核, NEED_MORE_INFO-待补充材料, WAITING_RETURN-待退货, WAITING_RECEIPT-待收货, APPROVED-已通过, REJECTED-已拒绝',
     `reason` VARCHAR(500) NOT NULL COMMENT '售后申请原因',
     `admin_remark` VARCHAR(500) NULL COMMENT '管理员处理备注',
     `return_carrier` VARCHAR(50) NULL COMMENT '退货物流承运商',
     `return_tracking_no` VARCHAR(80) NULL COMMENT '退货物流单号',
     `refund_amount` DECIMAL(12, 2) NOT NULL COMMENT '退款金额',
+    `approved_amount` DECIMAL(12, 2) NULL COMMENT '审批通过金额',
     `created_at` DATETIME(6) NOT NULL COMMENT '创建时间',
     `updated_at` DATETIME(6) NOT NULL COMMENT '更新时间',
     PRIMARY KEY (`id`),
@@ -111,6 +129,127 @@ CREATE TABLE IF NOT EXISTS `after_sales` (
     UNIQUE KEY `uk_after_sales_order` (`order_id`),
     KEY `idx_after_sales_user_created` (`user_id`, `created_at`)
 ) ENGINE = InnoDB DEFAULT CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci;
+
+CREATE TABLE IF NOT EXISTS `product_promotions` (
+    `id` BIGINT NOT NULL AUTO_INCREMENT COMMENT '活动主键',
+    `product_id` BIGINT NOT NULL COMMENT '商品ID',
+    `promotion_name` VARCHAR(100) NOT NULL COMMENT '活动名称',
+    `promotion_type` VARCHAR(40) NOT NULL COMMENT '活动类型',
+    `discount_summary` VARCHAR(300) NOT NULL COMMENT '优惠摘要',
+    `promotion_price` DECIMAL(12, 2) NOT NULL COMMENT '活动价',
+    `required_member_level` VARCHAR(20) NULL COMMENT '会员等级门槛',
+    `condition_summary` VARCHAR(300) NULL COMMENT '使用条件',
+    `start_at` DATETIME(6) NULL COMMENT '开始时间',
+    `end_at` DATETIME(6) NULL COMMENT '结束时间',
+    `active` BIT(1) NOT NULL COMMENT '是否启用',
+    PRIMARY KEY (`id`),
+    KEY `idx_product_promotions_product_active` (`product_id`, `active`),
+    CONSTRAINT `fk_product_promotions_product` FOREIGN KEY (`product_id`) REFERENCES `products` (`id`)
+) ENGINE = InnoDB DEFAULT CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci;
+
+CREATE TABLE IF NOT EXISTS `logistics_events` (
+    `id` BIGINT NOT NULL AUTO_INCREMENT COMMENT '物流轨迹主键',
+    `order_id` BIGINT NOT NULL COMMENT '订单ID',
+    `carrier` VARCHAR(50) NOT NULL COMMENT '承运商',
+    `tracking_no` VARCHAR(80) NOT NULL COMMENT '物流单号',
+    `status` VARCHAR(30) NOT NULL COMMENT '物流状态',
+    `content` VARCHAR(300) NOT NULL COMMENT '轨迹内容',
+    `occurred_at` DATETIME(6) NOT NULL COMMENT '发生时间',
+    PRIMARY KEY (`id`),
+    KEY `idx_logistics_events_order_time` (`order_id`, `occurred_at`),
+    CONSTRAINT `fk_logistics_events_order` FOREIGN KEY (`order_id`) REFERENCES `customer_orders` (`id`)
+) ENGINE = InnoDB DEFAULT CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci;
+
+CREATE TABLE IF NOT EXISTS `approval_records` (
+    `id` BIGINT NOT NULL AUTO_INCREMENT COMMENT '审批记录主键',
+    `after_sale_id` BIGINT NOT NULL COMMENT '售后申请ID',
+    `action` VARCHAR(30) NOT NULL COMMENT '审批动作',
+    `remark` VARCHAR(500) NOT NULL COMMENT '审批说明',
+    `approved_amount` DECIMAL(12, 2) NULL COMMENT '审批金额',
+    `created_at` DATETIME(6) NOT NULL COMMENT '创建时间',
+    PRIMARY KEY (`id`),
+    KEY `idx_approval_records_after_sale_time` (`after_sale_id`, `created_at`),
+    CONSTRAINT `fk_approval_records_after_sale` FOREIGN KEY (`after_sale_id`) REFERENCES `after_sales` (`id`)
+) ENGINE = InnoDB DEFAULT CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci;
+
+CREATE TABLE IF NOT EXISTS `after_sale_policies` (
+    `id` BIGINT NOT NULL AUTO_INCREMENT COMMENT '售后政策主键',
+    `scene_key` VARCHAR(60) NOT NULL COMMENT '业务场景标识',
+    `title` VARCHAR(100) NOT NULL COMMENT '政策标题',
+    `content` VARCHAR(1000) NOT NULL COMMENT '政策内容',
+    `applicable_conditions` VARCHAR(500) NOT NULL COMMENT '适用条件',
+    `exclusion_conditions` VARCHAR(500) NOT NULL COMMENT '排除条件',
+    `required_evidence` VARCHAR(500) NOT NULL COMMENT '所需材料',
+    `requires_manual_review` BIT(1) NOT NULL COMMENT '是否需要人工审核',
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uk_after_sale_policies_scene_key` (`scene_key`)
+) ENGINE = InnoDB DEFAULT CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci;
+
+CREATE TABLE IF NOT EXISTS `faq_entries` (
+    `id` BIGINT NOT NULL AUTO_INCREMENT COMMENT '常见问题主键',
+    `category` VARCHAR(50) NOT NULL COMMENT '问题分类',
+    `question` VARCHAR(300) NOT NULL COMMENT '问题',
+    `answer` VARCHAR(1000) NOT NULL COMMENT '答案',
+    PRIMARY KEY (`id`)
+) ENGINE = InnoDB DEFAULT CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci;
+
+DELIMITER $$
+DROP PROCEDURE IF EXISTS `_add_column_if_missing`$$
+CREATE PROCEDURE `_add_column_if_missing`(
+    IN table_name_value VARCHAR(64),
+    IN column_name_value VARCHAR(64),
+    IN column_definition_value VARCHAR(1000)
+)
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1
+        FROM information_schema.COLUMNS
+        WHERE TABLE_SCHEMA = DATABASE()
+          AND TABLE_NAME = table_name_value
+          AND COLUMN_NAME = column_name_value
+    ) THEN
+        SET @column_ddl = CONCAT(
+            'ALTER TABLE `', table_name_value, '` ADD COLUMN `', column_name_value, '` ', column_definition_value
+        );
+        PREPARE column_statement FROM @column_ddl;
+        EXECUTE column_statement;
+        DEALLOCATE PREPARE column_statement;
+    END IF;
+END$$
+DELIMITER ;
+
+CALL `_add_column_if_missing`('users', 'business_user_id', 'VARCHAR(30) NULL COMMENT ''课程业务用户编号''');
+CALL `_add_column_if_missing`('users', 'member_level', 'VARCHAR(20) NOT NULL DEFAULT ''normal'' COMMENT ''会员等级''');
+CALL `_add_column_if_missing`('users', 'risk_level', 'VARCHAR(20) NOT NULL DEFAULT ''low'' COMMENT ''风险等级''');
+CALL `_add_column_if_missing`('users', 'preferred_categories', 'VARCHAR(300) NOT NULL DEFAULT '''' COMMENT ''偏好品类''');
+CALL `_add_column_if_missing`('users', 'preferred_delivery', 'VARCHAR(100) NOT NULL DEFAULT '''' COMMENT ''偏好配送方式''');
+CALL `_add_column_if_missing`('users', 'budget_min', 'DECIMAL(12, 2) NULL COMMENT ''预算下限''');
+CALL `_add_column_if_missing`('users', 'budget_max', 'DECIMAL(12, 2) NULL COMMENT ''预算上限''');
+CALL `_add_column_if_missing`('users', 'invoice_required', 'BIT(1) NOT NULL DEFAULT b''0'' COMMENT ''是否需要发票''');
+CALL `_add_column_if_missing`('products', 'highlights', 'VARCHAR(500) NOT NULL DEFAULT '''' COMMENT ''商品亮点''');
+CALL `_add_column_if_missing`('products', 'supports_seven_day_return', 'BIT(1) NOT NULL DEFAULT b''1'' COMMENT ''是否支持七天无理由退货''');
+CALL `_add_column_if_missing`('products', 'after_sale_note', 'VARCHAR(500) NOT NULL DEFAULT '''' COMMENT ''售后说明''');
+CALL `_add_column_if_missing`('products', 'scenario_tags', 'VARCHAR(300) NOT NULL DEFAULT '''' COMMENT ''适用场景标签''');
+CALL `_add_column_if_missing`('cart_items', 'selected', 'BIT(1) NOT NULL DEFAULT b''1'' COMMENT ''是否选中结算''');
+CALL `_add_column_if_missing`('customer_orders', 'payment_status', 'VARCHAR(20) NOT NULL DEFAULT ''UNPAID'' COMMENT ''支付状态''');
+CALL `_add_column_if_missing`('customer_orders', 'fulfillment_status', 'VARCHAR(30) NOT NULL DEFAULT ''PENDING_SHIPMENT'' COMMENT ''履约状态''');
+CALL `_add_column_if_missing`('customer_orders', 'remark', 'VARCHAR(500) NULL COMMENT ''订单备注''');
+CALL `_add_column_if_missing`('after_sales', 'approved_amount', 'DECIMAL(12, 2) NULL COMMENT ''审批通过金额''');
+
+DROP PROCEDURE `_add_column_if_missing`;
+
+UPDATE `customer_orders`
+SET `payment_status` = CASE
+    WHEN `status` = 'REFUNDED' THEN 'REFUNDED'
+    WHEN `status` IN ('PENDING_PAYMENT', 'CANCELED') THEN 'UNPAID'
+    ELSE 'PAID'
+END,
+`fulfillment_status` = CASE
+    WHEN `status` = 'SHIPPED' THEN 'SHIPPED'
+    WHEN `status` = 'COMPLETED' THEN 'DELIVERED'
+    WHEN `status` = 'CANCELED' THEN 'CANCELED'
+    ELSE 'PENDING_SHIPMENT'
+END;
 
 START TRANSACTION;
 

@@ -43,6 +43,18 @@ public class Product {
     @Column(nullable = false)
     private Boolean active;
 
+    @Column(nullable = false, length = 500)
+    private String highlights = "";
+
+    @Column(name = "supports_seven_day_return", nullable = false)
+    private Boolean supportsSevenDayReturn = true;
+
+    @Column(name = "after_sale_note", nullable = false, length = 500)
+    private String afterSaleNote = "";
+
+    @Column(name = "scenario_tags", nullable = false, length = 300)
+    private String scenarioTags = "";
+
     protected Product() {
     }
 
@@ -53,6 +65,14 @@ public class Product {
 
     public Product(String sku, String name, String category, String description, BigDecimal price,
                    BigDecimal promotionPrice, Integer stock, String imageUrl, Boolean active) {
+        this(sku, name, category, description, price, promotionPrice, stock, imageUrl, active,
+            "", true, "", "");
+    }
+
+    public Product(String sku, String name, String category, String description, BigDecimal price,
+                   BigDecimal promotionPrice, Integer stock, String imageUrl, Boolean active,
+                   String highlights, Boolean supportsSevenDayReturn, String afterSaleNote,
+                   String scenarioTags) {
         this.sku = sku;
         this.name = name;
         this.category = category;
@@ -62,10 +82,22 @@ public class Product {
         this.stock = stock;
         this.imageUrl = imageUrl;
         this.active = active;
+        this.highlights = highlights == null ? "" : highlights;
+        this.supportsSevenDayReturn = supportsSevenDayReturn == null || supportsSevenDayReturn;
+        this.afterSaleNote = afterSaleNote == null ? "" : afterSaleNote;
+        this.scenarioTags = scenarioTags == null ? "" : scenarioTags;
     }
 
     public void update(String sku, String name, String category, String description, BigDecimal price,
                        BigDecimal promotionPrice, Integer stock, String imageUrl, Boolean active) {
+        update(sku, name, category, description, price, promotionPrice, stock, imageUrl, active,
+            highlights, supportsSevenDayReturn, afterSaleNote, scenarioTags);
+    }
+
+    public void update(String sku, String name, String category, String description, BigDecimal price,
+                       BigDecimal promotionPrice, Integer stock, String imageUrl, Boolean active,
+                       String highlights, Boolean supportsSevenDayReturn, String afterSaleNote,
+                       String scenarioTags) {
         this.sku = sku;
         this.name = name;
         this.category = category;
@@ -75,6 +107,10 @@ public class Product {
         this.stock = stock;
         this.imageUrl = imageUrl;
         this.active = active;
+        this.highlights = highlights == null ? "" : highlights;
+        this.supportsSevenDayReturn = supportsSevenDayReturn == null || supportsSevenDayReturn;
+        this.afterSaleNote = afterSaleNote == null ? "" : afterSaleNote;
+        this.scenarioTags = scenarioTags == null ? "" : scenarioTags;
     }
 
     public BigDecimal getSalePrice() {
@@ -127,5 +163,21 @@ public class Product {
 
     public Boolean getActive() {
         return active;
+    }
+
+    public String getHighlights() {
+        return highlights == null ? "" : highlights;
+    }
+
+    public Boolean getSupportsSevenDayReturn() {
+        return supportsSevenDayReturn == null || supportsSevenDayReturn;
+    }
+
+    public String getAfterSaleNote() {
+        return afterSaleNote == null ? "" : afterSaleNote;
+    }
+
+    public String getScenarioTags() {
+        return scenarioTags == null ? "" : scenarioTags;
     }
 }

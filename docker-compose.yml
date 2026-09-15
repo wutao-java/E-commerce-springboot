@@ -28,6 +28,9 @@ services:
       DB_USERNAME: ${MYSQL_USER:-commerce}
       DB_PASSWORD: ${MYSQL_PASSWORD:-commerce123}
       CORS_ALLOWED_ORIGIN: ${CORS_ALLOWED_ORIGIN:-http://localhost:5173}
+      AGENT_BASE_URL: ${AGENT_BASE_URL:-http://host.docker.internal:8000}
+      AGENT_CONNECT_TIMEOUT_MS: ${AGENT_CONNECT_TIMEOUT_MS:-2000}
+      AGENT_READ_TIMEOUT_MS: ${AGENT_READ_TIMEOUT_MS:-15000}
     depends_on:
       mysql:
         condition: service_healthy

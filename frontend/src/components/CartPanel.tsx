@@ -6,6 +6,7 @@ type CartPanelProps = {
   cart: Cart;
   busyItemId: number | null;
   onChangeQuantity: (itemId: number, quantity: number) => void;
+  onToggleSelected: (itemId: number, selected: boolean) => void;
   onRemove: (itemId: number) => void;
   onCheckout: () => void;
 };
@@ -14,6 +15,7 @@ export function CartPanel({
   cart,
   busyItemId,
   onChangeQuantity,
+  onToggleSelected,
   onRemove,
   onCheckout,
 }: CartPanelProps) {
@@ -42,11 +44,21 @@ export function CartPanel({
       ) : (
         <div className="cart-items">
           {cart.items.map((item) => (
-            <div className="cart-item" key={item.id}>
+            <div className={`cart-item ${item.selected ? "selected" : ""}`} key={item.id}>
+              <input
+                className="cart-select"
+                type="checkbox"
+                checked={item.selected}
+                disabled={busyItemId === item.id || !item.settlementAvailable}
+                onChange={(event) => onToggleSelected(item.id, event.target.checked)}
+                aria-label={`选择${item.productName}`}
+              />
               <img src={item.imageUrl} alt="" />
               <div className="cart-item-copy">
                 <strong>{item.productName}</strong>
                 <span>¥{item.unitPrice.toFixed(2)}</span>
+                {item.promotionName && <small className="promotion-note">{item.promotionName}</small>}
+                {!item.settlementAvailable && <small className="unavailable-note">{item.unavailableReason}</small>}
                 <div className="quantity-control" aria-label={`${item.productName}数量`}>
                   <button
                     type="button"
@@ -89,11 +101,11 @@ export function CartPanel({
 
       <div className="cart-summary">
         <div>
-          <span>商品合计</span>
-          <strong>¥{cart.totalAmount.toFixed(2)}</strong>
+          <span>已选 {cart.selectedItemCount} 件</span>
+          <strong>¥{cart.selectedTotalAmount.toFixed(2)}</strong>
         </div>
         <small>下单后可使用账户余额支付</small>
-        <button className="primary-button checkout-button" type="button" disabled={!cart.itemCount} onClick={onCheckout}>
+        <button className="primary-button checkout-button" type="button" disabled={!cart.selectedItemCount} onClick={onCheckout}>
           确认订单
         </button>
       </div>

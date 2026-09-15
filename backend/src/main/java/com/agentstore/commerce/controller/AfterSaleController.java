@@ -3,6 +3,7 @@ package com.agentstore.commerce.controller;
 import com.agentstore.commerce.dto.ApiModels.AfterSaleResponse;
 import com.agentstore.commerce.dto.ApiModels.CreateAfterSaleRequest;
 import com.agentstore.commerce.dto.ApiModels.ReturnShipmentRequest;
+import com.agentstore.commerce.dto.ApiModels.SupplementAfterSaleRequest;
 import com.agentstore.commerce.dto.ApiResponse;
 import com.agentstore.commerce.service.AuthService;
 import com.agentstore.commerce.service.CommerceService;
@@ -53,5 +54,14 @@ public class AfterSaleController {
         @Valid @RequestBody ReturnShipmentRequest request) {
         Long userId = authService.requireCurrentAccount(authentication).getId();
         return ApiResponse.success(commerceService.submitReturnShipment(afterSaleId, userId, request));
+    }
+
+    @Operation(summary = "补充售后材料")
+    @PostMapping("/{afterSaleId}/supplement")
+    public ApiResponse<AfterSaleResponse> supplement(
+        @PathVariable Long afterSaleId, Authentication authentication,
+        @Valid @RequestBody SupplementAfterSaleRequest request) {
+        Long userId = authService.requireCurrentAccount(authentication).getId();
+        return ApiResponse.success(commerceService.supplementAfterSale(afterSaleId, userId, request.content()));
     }
 }

@@ -35,6 +35,12 @@ public class CustomerOrder {
     @Column(nullable = false, length = 30)
     private OrderStatus status;
 
+    @Column(name = "payment_status", nullable = false, length = 20)
+    private String paymentStatus = "UNPAID";
+
+    @Column(name = "fulfillment_status", nullable = false, length = 30)
+    private String fulfillmentStatus = "PENDING_SHIPMENT";
+
     @Column(name = "total_amount", nullable = false, precision = 12, scale = 2)
     private BigDecimal totalAmount;
 
@@ -49,6 +55,9 @@ public class CustomerOrder {
 
     @Column(name = "tracking_no", length = 80)
     private String trackingNo;
+
+    @Column(length = 500)
+    private String remark;
 
     @Column(name = "paid_at")
     private LocalDateTime paidAt;
@@ -75,6 +84,11 @@ public class CustomerOrder {
 
     public CustomerOrder(String orderNo, Long userId, BigDecimal totalAmount, String receiverName,
                          String receiverPhone, String shippingAddress, LocalDateTime now) {
+        this(orderNo, userId, totalAmount, receiverName, receiverPhone, shippingAddress, "", now);
+    }
+
+    public CustomerOrder(String orderNo, Long userId, BigDecimal totalAmount, String receiverName,
+                         String receiverPhone, String shippingAddress, String remark, LocalDateTime now) {
         this.orderNo = orderNo;
         this.userId = userId;
         this.status = OrderStatus.PENDING_PAYMENT;
@@ -82,6 +96,9 @@ public class CustomerOrder {
         this.receiverName = receiverName;
         this.receiverPhone = receiverPhone;
         this.shippingAddress = shippingAddress;
+        this.paymentStatus = "UNPAID";
+        this.fulfillmentStatus = "PENDING_SHIPMENT";
+        this.remark = remark;
         this.createdAt = now;
         this.updatedAt = now;
     }
@@ -92,17 +109,21 @@ public class CustomerOrder {
 
     public void cancel(LocalDateTime now) {
         this.status = OrderStatus.CANCELED;
+        this.fulfillmentStatus = "CANCELED";
         this.updatedAt = now;
     }
 
     public void pay(LocalDateTime now) {
         this.status = OrderStatus.PAID;
+        this.paymentStatus = "PAID";
+        this.fulfillmentStatus = "PENDING_SHIPMENT";
         this.paidAt = now;
         this.updatedAt = now;
     }
 
     public void ship(String trackingNo, LocalDateTime now) {
         this.status = OrderStatus.SHIPPED;
+        this.fulfillmentStatus = "SHIPPED";
         this.trackingNo = trackingNo;
         this.shippedAt = now;
         this.updatedAt = now;
@@ -110,6 +131,7 @@ public class CustomerOrder {
 
     public void complete(LocalDateTime now) {
         this.status = OrderStatus.COMPLETED;
+        this.fulfillmentStatus = "DELIVERED";
         this.completedAt = now;
         this.updatedAt = now;
     }
@@ -132,6 +154,7 @@ public class CustomerOrder {
 
     public void refund(LocalDateTime now) {
         this.status = OrderStatus.REFUNDED;
+        this.paymentStatus = "REFUNDED";
         this.updatedAt = now;
     }
 
@@ -169,6 +192,30 @@ public class CustomerOrder {
 
     public String getTrackingNo() {
         return trackingNo;
+    }
+
+    public String getPaymentStatus() {
+        if (paymentStatus != null) {
+            return paymentStatus;
+        }
+        return status == OrderStatus.PENDING_PAYMENT || status == OrderStatus.CANCELED ? "UNPAID" :
+            status == OrderStatus.REFUNDED ? "REFUNDED" : "PAID";
+    }
+
+    public String getFulfillmentStatus() {
+        if (fulfillmentStatus != null) {
+            return fulfillmentStatus;
+        }
+        return switch (status) {
+            case SHIPPED -> "SHIPPED";
+            case COMPLETED -> "DELIVERED";
+            case CANCELED -> "CANCELED";
+            default -> "PENDING_SHIPMENT";
+        };
+    }
+
+    public String getRemark() {
+        return remark;
     }
 
     public LocalDateTime getPaidAt() {

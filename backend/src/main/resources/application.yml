@@ -26,5 +26,9 @@ springdoc:
 
 app:
   seed-data: true
+  agent:
+    base-url: ${AGENT_BASE_URL:http://127.0.0.1:8000}
+    connect-timeout-ms: ${AGENT_CONNECT_TIMEOUT_MS:2000}
+    read-timeout-ms: ${AGENT_READ_TIMEOUT_MS:15000}
   cors:
     allowed-origin: ${CORS_ALLOWED_ORIGIN:http://localhost:5173}

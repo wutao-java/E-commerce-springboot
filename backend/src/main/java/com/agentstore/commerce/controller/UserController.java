@@ -1,6 +1,7 @@
 package com.agentstore.commerce.controller;
 
 import com.agentstore.commerce.dto.ApiModels.BalanceRecordResponse;
+import com.agentstore.commerce.dto.ApiModels.CommerceProfileRequest;
 import com.agentstore.commerce.dto.ApiModels.ProfileUpdateRequest;
 import com.agentstore.commerce.dto.ApiModels.UserResponse;
 import com.agentstore.commerce.dto.ApiResponse;
@@ -43,5 +44,13 @@ public class UserController {
     public ApiResponse<List<BalanceRecordResponse>> listBalanceRecords(Authentication authentication) {
         Long userId = authService.requireCurrentAccount(authentication).getId();
         return ApiResponse.success(userService.listBalanceRecords(userId));
+    }
+
+    @Operation(summary = "修改会员与购物偏好")
+    @PutMapping("/preferences")
+    public ApiResponse<UserResponse> updateCommerceProfile(
+        Authentication authentication, @Valid @RequestBody CommerceProfileRequest request) {
+        Long userId = authService.requireCurrentAccount(authentication).getId();
+        return ApiResponse.success(userService.updateCommerceProfile(userId, request));
     }
 }

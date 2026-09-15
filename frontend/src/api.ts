@@ -1,6 +1,7 @@
 import type {
   AfterSale,
   AfterSaleType,
+  AfterSalePolicy,
   BalanceRecord,
   Cart,
   CheckoutPayload,
@@ -8,6 +9,10 @@ import type {
   OrderStatus,
   Product,
   ProductPayload,
+  Promotion,
+  PromotionPayload,
+  FaqEntry,
+  CustomerServiceResponse,
   User,
   UserCreatePayload,
 } from "./types";
@@ -71,15 +76,15 @@ export const commerceApi = {
     request<Product[]>(`/api/products${query({ keyword, category })}`),
   getProduct: (productId: number) => request<Product>(`/api/products/${productId}`),
   getCart: () => request<Cart>("/api/cart"),
-  addCartItem: (productId: number) =>
+  addCartItem: (productId: number, quantity = 1, selected = true) =>
     request<Cart>("/api/cart/items", {
       method: "POST",
-      body: JSON.stringify({ productId, quantity: 1 }),
+      body: JSON.stringify({ productId, quantity, selected }),
     }),
-  updateCartItem: (itemId: number, quantity: number) =>
+  updateCartItem: (itemId: number, payload: { quantity?: number; selected?: boolean }) =>
     request<Cart>(`/api/cart/items/${itemId}`, {
       method: "PUT",
-      body: JSON.stringify({ quantity }),
+      body: JSON.stringify(payload),
     }),
   deleteCartItem: (itemId: number) =>
     request<Cart>(`/api/cart/items/${itemId}`, { method: "DELETE" }),
@@ -100,9 +105,23 @@ export const commerceApi = {
       method: "POST",
       body: JSON.stringify({ carrier, trackingNo }),
     }),
+  supplementAfterSale: (afterSaleId: number, content: string) =>
+    request<AfterSale>(`/api/after-sales/${afterSaleId}/supplement`, {
+      method: "POST",
+      body: JSON.stringify({ content }),
+    }),
   updateProfile: (payload: Pick<User, "displayName" | "phone" | "address">) =>
     request<User>("/api/users/me", { method: "PUT", body: JSON.stringify(payload) }),
   listBalanceRecords: () => request<BalanceRecord[]>("/api/users/me/balance-records"),
+  updateCommerceProfile: (payload: Pick<User, "preferredCategories" | "preferredDelivery" | "budgetMin" | "budgetMax" | "invoiceRequired">) =>
+    request<User>("/api/users/me/preferences", { method: "PUT", body: JSON.stringify(payload) }),
+  listPolicies: () => request<AfterSalePolicy[]>("/api/content/policies"),
+  listFaqs: () => request<FaqEntry[]>("/api/content/faqs"),
+  chat: (message: string, sessionId: string | null, pageContext: Record<string, unknown>) =>
+    request<CustomerServiceResponse>("/api/customer-service/chat", {
+      method: "POST",
+      body: JSON.stringify({ message, sessionId, pageContext }),
+    }),
 };
 
 export const adminApi = {
@@ -111,18 +130,28 @@ export const adminApi = {
     request<Product>("/api/admin/products", { method: "POST", body: JSON.stringify(payload) }),
   updateProduct: (productId: number, payload: ProductPayload) =>
     request<Product>(`/api/admin/products/${productId}`, { method: "PUT", body: JSON.stringify(payload) }),
+  listPromotions: () => request<Promotion[]>("/api/admin/promotions"),
+  createPromotion: (payload: PromotionPayload) =>
+    request<Promotion>("/api/admin/promotions", { method: "POST", body: JSON.stringify(payload) }),
+  updatePromotion: (promotionId: number, payload: PromotionPayload) =>
+    request<Promotion>(`/api/admin/promotions/${promotionId}`, { method: "PUT", body: JSON.stringify(payload) }),
   listOrders: (keyword?: string, status?: OrderStatus | "") =>
     request<Order[]>(`/api/admin/orders${query({ keyword, status: status || undefined })}`),
-  shipOrder: (orderNo: string, trackingNo: string) =>
+  shipOrder: (orderNo: string, trackingNo: string, carrier = "顺丰速运") =>
     request<Order>(`/api/admin/orders/${orderNo}/ship`, {
       method: "POST",
-      body: JSON.stringify({ trackingNo }),
+      body: JSON.stringify({ carrier, trackingNo }),
     }),
   listAfterSales: () => request<AfterSale[]>("/api/admin/after-sales"),
-  reviewAfterSale: (afterSaleId: number, approved: boolean, remark: string) =>
+  reviewAfterSale: (afterSaleId: number, approved: boolean, remark: string, approvedAmount?: number) =>
     request<AfterSale>(`/api/admin/after-sales/${afterSaleId}/review`, {
       method: "POST",
-      body: JSON.stringify({ approved, remark }),
+      body: JSON.stringify({ approved, remark, approvedAmount }),
+    }),
+  requestAfterSaleInfo: (afterSaleId: number, remark: string) =>
+    request<AfterSale>(`/api/admin/after-sales/${afterSaleId}/need-more-info`, {
+      method: "POST",
+      body: JSON.stringify({ remark }),
     }),
   confirmAfterSaleReceipt: (afterSaleId: number, remark: string) =>
     request<AfterSale>(`/api/admin/after-sales/${afterSaleId}/confirm-receipt`, {

@@ -2,6 +2,7 @@ package com.agentstore.commerce.service;
 
 import com.agentstore.commerce.domain.UserAccount;
 import com.agentstore.commerce.dto.ApiModels.BalanceRecordResponse;
+import com.agentstore.commerce.dto.ApiModels.CommerceProfileRequest;
 import com.agentstore.commerce.dto.ApiModels.ProfileUpdateRequest;
 import com.agentstore.commerce.dto.ApiModels.UserResponse;
 import com.agentstore.commerce.exception.BusinessException;
@@ -40,6 +41,19 @@ public class UserService {
             .map(record -> new BalanceRecordResponse(record.getId(), record.getType(), record.getAmount(),
                 record.getBalanceAfter(), record.getDescription(), record.getCreatedAt()))
             .toList();
+    }
+
+    @Transactional
+    public UserResponse updateCommerceProfile(Long userId, CommerceProfileRequest request) {
+        UserAccount account = requireUser(userId);
+        if (request.budgetMin() != null && request.budgetMax() != null
+            && request.budgetMin().compareTo(request.budgetMax()) > 0) {
+            throw new BusinessException(HttpStatus.BAD_REQUEST, "预算下限不能高于预算上限");
+        }
+        account.updateCommerceProfile(account.getBusinessUserId(),
+            account.getMemberLevel(), account.getRiskLevel(), request.preferredCategories(), request.preferredDelivery(),
+            request.budgetMin(), request.budgetMax(), request.invoiceRequired());
+        return authService.toUserResponse(account);
     }
 
     private UserAccount requireUser(Long userId) {

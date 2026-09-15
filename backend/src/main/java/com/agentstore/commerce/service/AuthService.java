@@ -68,6 +68,9 @@ public class AuthService implements UserDetailsService {
 
     public UserResponse toUserResponse(UserAccount account) {
         return new UserResponse(account.getId(), account.getUsername(), account.getDisplayName(),
-            account.getPhone(), account.getAddress(), account.getRole(), account.getBalance(), account.getCreatedAt());
+            account.getPhone(), account.getAddress(), account.getRole(), account.getBalance(), account.getCreatedAt(),
+            account.getBusinessUserId(), account.getMemberLevel(), account.getRiskLevel(),
+            account.getPreferredCategories(), account.getPreferredDelivery(), account.getBudgetMin(),
+            account.getBudgetMax(), account.getInvoiceRequired());
     }
 }

@@ -4,6 +4,7 @@ import {
   ClipboardCheck,
   LayoutDashboard,
   LogOut,
+  Megaphone,
   Package,
   Pencil,
   Plus,
@@ -19,6 +20,7 @@ import {
 import { adminApi } from "../api";
 import type { AfterSale, Order, OrderStatus, Product, ProductPayload, User, UserCreatePayload } from "../types";
 import { formatTime, statusLabel } from "./OrderList";
+import { PromotionManager } from "./PromotionManager";
 
 type AdminAppProps = {
   user: User;
@@ -27,7 +29,7 @@ type AdminAppProps = {
   showError: (error: unknown) => void;
 };
 
-type AdminView = "dashboard" | "products" | "orders" | "afterSales" | "users";
+type AdminView = "dashboard" | "products" | "promotions" | "orders" | "afterSales" | "users";
 
 export function AdminApp({ user, onLogout, showNotice, showError }: AdminAppProps) {
   const [view, setView] = useState<AdminView>("dashboard");
@@ -41,6 +43,7 @@ export function AdminApp({ user, onLogout, showNotice, showError }: AdminAppProp
   const [editingProduct, setEditingProduct] = useState<Product | null | "new">(null);
   const [shippingOrder, setShippingOrder] = useState<Order | null>(null);
   const [reviewing, setReviewing] = useState<{ item: AfterSale; approved: boolean } | null>(null);
+  const [requestingInfo, setRequestingInfo] = useState<AfterSale | null>(null);
   const [receivingAfterSale, setReceivingAfterSale] = useState<AfterSale | null>(null);
   const [adjustingUser, setAdjustingUser] = useState<User | null>(null);
   const [creatingUser, setCreatingUser] = useState(false);
@@ -123,10 +126,10 @@ export function AdminApp({ user, onLogout, showNotice, showError }: AdminAppProp
     }
   }
 
-  async function reviewAfterSale(remark: string) {
+  async function reviewAfterSale(remark: string, approvedAmount?: number) {
     if (!reviewing) return;
     try {
-      const updated = await adminApi.reviewAfterSale(reviewing.item.id, reviewing.approved, remark);
+      const updated = await adminApi.reviewAfterSale(reviewing.item.id, reviewing.approved, remark, approvedAmount);
       setAfterSales((current) => current.map((item) => item.id === updated.id ? updated : item));
       setOrders(await adminApi.listOrders());
       setUsers(await adminApi.listUsers());
@@ -134,6 +137,18 @@ export function AdminApp({ user, onLogout, showNotice, showError }: AdminAppProp
       showNotice(reviewing.approved
         ? reviewing.item.type === "REFUND_ONLY" ? "退款已完成" : "已同意退货，等待买家寄回"
         : "售后申请已拒绝");
+    } catch (error) {
+      showError(error);
+    }
+  }
+
+  async function requestAfterSaleInfo(remark: string) {
+    if (!requestingInfo) return;
+    try {
+      const updated = await adminApi.requestAfterSaleInfo(requestingInfo.id, remark);
+      setAfterSales((current) => current.map((item) => item.id === updated.id ? updated : item));
+      setRequestingInfo(null);
+      showNotice("已通知买家补充材料");
     } catch (error) {
       showError(error);
     }
@@ -183,6 +198,7 @@ export function AdminApp({ user, onLogout, showNotice, showError }: AdminAppProp
         <nav aria-label="管理导航">
           <AdminNav active={view === "dashboard"} icon={<LayoutDashboard size={17} />} label="概览" onClick={() => setView("dashboard")} />
           <AdminNav active={view === "products"} icon={<Package size={17} />} label="商品" onClick={() => { setView("products"); setKeyword(""); }} />
+          <AdminNav active={view === "promotions"} icon={<Megaphone size={17} />} label="活动" onClick={() => { setView("promotions"); setKeyword(""); }} />
           <AdminNav active={view === "orders"} icon={<ClipboardCheck size={17} />} label="订单" onClick={() => { setView("orders"); setKeyword(""); }} />
           <AdminNav active={view === "afterSales"} icon={<RotateCcw size={17} />} label="售后" onClick={() => { setView("afterSales"); setKeyword(""); }} />
           <AdminNav active={view === "users"} icon={<Users size={17} />} label="用户" onClick={() => { setView("users"); setKeyword(""); }} />
@@ -209,14 +225,16 @@ export function AdminApp({ user, onLogout, showNotice, showError }: AdminAppProp
           </>
         )}
 
+        {view === "promotions" && <PromotionManager showNotice={showNotice} showError={showError} />}
+
         {view === "orders" && (
           <><AdminHeading kicker="支付与物流状态" title="订单管理" /><div className="admin-toolbar"><label className="search-box"><Search size={17} /><input value={keyword} onChange={(event) => setKeyword(event.target.value)} placeholder="搜索订单、收货人或手机" /></label><select value={orderStatus} onChange={(event) => setOrderStatus(event.target.value as OrderStatus | "")}><option value="">全部状态</option>{Object.entries(statusLabel).map(([value, label]) => <option value={value} key={value}>{label}</option>)}</select></div>
-            <DataTable loading={loading} empty={filteredOrders.length === 0}><table><thead><tr><th>订单</th><th>收货信息</th><th>金额</th><th>状态</th><th>创建时间</th><th>操作</th></tr></thead><tbody>{filteredOrders.map((order) => <tr key={order.id}><td><strong>{order.orderNo}</strong><small className="block-muted">{order.items.length} 种商品</small></td><td>{order.receiverName}<small className="block-muted">{order.receiverPhone}</small></td><td><strong>¥{order.totalAmount.toFixed(2)}</strong></td><td><span className={`status-badge ${order.status.toLowerCase()}`}>{statusLabel[order.status]}</span></td><td>{formatTime(order.createdAt)}</td><td>{order.status === "PAID" ? <button className="primary-button compact-button" onClick={() => setShippingOrder(order)}><Truck size={15} />发货</button> : order.trackingNo ? <small>{order.trackingNo}</small> : <span className="block-muted">--</span>}</td></tr>)}</tbody></table></DataTable>
+            <DataTable loading={loading} empty={filteredOrders.length === 0}><table><thead><tr><th>订单</th><th>收货信息</th><th>金额</th><th>订单状态</th><th>支付 / 履约</th><th>物流轨迹</th><th>操作</th></tr></thead><tbody>{filteredOrders.map((order) => <tr key={order.id}><td><strong>{order.orderNo}</strong><small className="block-muted">{order.items.length} 种商品 · {formatTime(order.createdAt)}</small></td><td>{order.receiverName}<small className="block-muted">{order.receiverPhone}</small></td><td><strong>¥{order.totalAmount.toFixed(2)}</strong></td><td><span className={`status-badge ${order.status.toLowerCase()}`}>{statusLabel[order.status]}</span></td><td>{paymentStatusLabel[order.paymentStatus] || order.paymentStatus}<small className="block-muted">{fulfillmentStatusLabel[order.fulfillmentStatus] || order.fulfillmentStatus}</small></td><td><div className="logistics-events">{order.logisticsEvents.length === 0 ? <span className="block-muted">暂无轨迹</span> : order.logisticsEvents.map((event) => <small key={event.id}><strong>{event.status}</strong>{event.content}<span>{formatTime(event.occurredAt)}</span></small>)}</div></td><td>{order.status === "PAID" ? <button className="primary-button compact-button" onClick={() => setShippingOrder(order)}><Truck size={15} />发货</button> : order.trackingNo ? <small>{order.trackingNo}</small> : <span className="block-muted">--</span>}</td></tr>)}</tbody></table></DataTable>
           </>
         )}
 
         {view === "afterSales" && (
-          <><AdminHeading kicker="仅退款直接到账，退货退款验收后到账" title="售后管理" /><DataTable loading={loading} empty={afterSales.length === 0}><table><thead><tr><th>售后单</th><th>订单</th><th>类型</th><th>原因</th><th>退款金额</th><th>状态</th><th>操作</th></tr></thead><tbody>{afterSales.map((item) => <tr key={item.id}><td><strong>{item.afterSaleNo}</strong><small className="block-muted">{formatTime(item.createdAt)}</small></td><td>{item.orderNo}</td><td>{afterSaleTypeLabel[item.type]}</td><td className="reason-cell">{item.reason}{item.returnTrackingNo && <small className="block-muted">{item.returnCarrier} · {item.returnTrackingNo}</small>}</td><td><strong>¥{item.refundAmount.toFixed(2)}</strong></td><td><span className={`status-badge ${item.status.toLowerCase()}`}>{afterSaleLabel[item.status]}</span>{item.adminRemark && <small className="block-muted">{item.adminRemark}</small>}</td><td>{item.status === "PENDING" ? <div className="table-actions"><button className="primary-button compact-button" onClick={() => setReviewing({ item, approved: true })}>{item.type === "REFUND_ONLY" ? "批准退款" : "同意退货"}</button><button className="danger-button compact-button" onClick={() => setReviewing({ item, approved: false })}>拒绝</button></div> : item.status === "WAITING_RECEIPT" ? <button className="primary-button compact-button" onClick={() => setReceivingAfterSale(item)}><Truck size={15} />确认收货</button> : <span className="block-muted">{item.status === "WAITING_RETURN" ? "等待买家寄回" : "已处理"}</span>}</td></tr>)}</tbody></table></DataTable>
+          <><AdminHeading kicker="支持退款、退货、补偿和取消订单" title="售后管理" /><DataTable loading={loading} empty={afterSales.length === 0}><table><thead><tr><th>售后单</th><th>订单</th><th>类型</th><th>原因</th><th>审批金额</th><th>状态</th><th>操作</th></tr></thead><tbody>{afterSales.map((item) => <tr key={item.id}><td><strong>{item.afterSaleNo}</strong><small className="block-muted">{formatTime(item.createdAt)}</small></td><td>{item.orderNo}</td><td>{afterSaleTypeLabel[item.type]}</td><td className="reason-cell">{item.reason}{item.returnTrackingNo && <small className="block-muted">{item.returnCarrier} · {item.returnTrackingNo}</small>}<small className="block-muted">审批记录 {item.approvalRecords.length} 条</small></td><td><strong>¥{(item.approvedAmount ?? item.refundAmount).toFixed(2)}</strong></td><td><span className={`status-badge ${item.status.toLowerCase()}`}>{afterSaleLabel[item.status]}</span>{item.adminRemark && <small className="block-muted">{item.adminRemark}</small>}</td><td>{item.status === "PENDING" ? <div className="table-actions"><button className="primary-button compact-button" onClick={() => setReviewing({ item, approved: true })}>{item.type === "RETURN_REFUND" ? "同意退货" : "批准申请"}</button><button className="secondary-button compact-button" onClick={() => setRequestingInfo(item)}>补充材料</button><button className="danger-button compact-button" onClick={() => setReviewing({ item, approved: false })}>拒绝</button></div> : item.status === "WAITING_RECEIPT" ? <button className="primary-button compact-button" onClick={() => setReceivingAfterSale(item)}><Truck size={15} />确认收货</button> : <span className="block-muted">{item.status === "WAITING_RETURN" ? "等待买家寄回" : item.status === "NEED_MORE_INFO" ? "等待买家补充" : "已处理"}</span>}</td></tr>)}</tbody></table></DataTable>
           </>
         )}
 
@@ -227,7 +245,8 @@ export function AdminApp({ user, onLogout, showNotice, showError }: AdminAppProp
 
       {editingProduct && <ProductEditor product={editingProduct === "new" ? null : editingProduct} onClose={() => setEditingProduct(null)} onSave={saveProduct} />}
       {shippingOrder && <TextActionDialog kicker={`订单 ${shippingOrder.orderNo}`} title="填写物流单号" label="物流单号" placeholder="例如 SF1234567890" submitText="确认发货" onClose={() => setShippingOrder(null)} onSubmit={shipOrder} />}
-      {reviewing && <TextActionDialog kicker={reviewing.item.afterSaleNo} title={reviewing.approved ? reviewing.item.type === "REFUND_ONLY" ? "批准仅退款" : "同意退货退款" : "拒绝售后申请"} label="处理说明" placeholder="填写审核意见" submitText={reviewing.approved ? reviewing.item.type === "REFUND_ONLY" ? "确认退款" : "确认同意" : "确认拒绝"} danger={!reviewing.approved} onClose={() => setReviewing(null)} onSubmit={reviewAfterSale} />}
+      {reviewing && <ReviewAfterSaleDialog item={reviewing.item} approved={reviewing.approved} onClose={() => setReviewing(null)} onSubmit={reviewAfterSale} />}
+      {requestingInfo && <TextActionDialog kicker={requestingInfo.afterSaleNo} title="要求补充售后材料" label="所需材料" placeholder="说明需要买家补充的凭证或信息" submitText="通知买家" onClose={() => setRequestingInfo(null)} onSubmit={requestAfterSaleInfo} />}
       {receivingAfterSale && <TextActionDialog kicker={receivingAfterSale.afterSaleNo} title="确认收到退货" label="验收说明" placeholder="填写退货商品验收结果" submitText="确认收货并退款" onClose={() => setReceivingAfterSale(null)} onSubmit={confirmAfterSaleReceipt} />}
       {adjustingUser && <BalanceDialog user={adjustingUser} onClose={() => setAdjustingUser(null)} onSubmit={adjustBalance} />}
       {creatingUser && <UserCreator onClose={() => setCreatingUser(false)} onSave={createUser} />}
@@ -235,8 +254,10 @@ export function AdminApp({ user, onLogout, showNotice, showError }: AdminAppProp
   );
 }
 
-const afterSaleLabel = { PENDING: "待处理", WAITING_RETURN: "待买家寄回", WAITING_RECEIPT: "待确认收货", APPROVED: "已退款", REJECTED: "已拒绝" } as const;
-const afterSaleTypeLabel = { REFUND_ONLY: "仅退款", RETURN_REFUND: "退货退款" } as const;
+const afterSaleLabel = { PENDING: "待处理", NEED_MORE_INFO: "待补充材料", WAITING_RETURN: "待买家寄回", WAITING_RECEIPT: "待确认收货", APPROVED: "已退款", REJECTED: "已拒绝" } as const;
+const afterSaleTypeLabel = { REFUND_ONLY: "仅退款", RETURN_REFUND: "退货退款", COMPENSATION: "物流补偿", CANCEL_ORDER: "取消订单" } as const;
+const paymentStatusLabel: Record<string, string> = { UNPAID: "未支付", PAID: "已支付", REFUNDED: "已退款" };
+const fulfillmentStatusLabel: Record<string, string> = { PENDING_SHIPMENT: "待发货", SHIPPED: "已发货", DELIVERED: "已送达", CANCELED: "已取消" };
 
 function AdminNav({ active, icon, label, onClick }: { active: boolean; icon: React.ReactNode; label: string; onClick: () => void }) {
   return <button className={active ? "active" : ""} type="button" onClick={onClick}>{icon}{label}</button>;
@@ -261,10 +282,18 @@ function DataTable({ loading, empty, children }: { loading: boolean; empty: bool
 }
 
 function ProductEditor({ product, onClose, onSave }: { product: Product | null; onClose: () => void; onSave: (payload: ProductPayload) => Promise<void> }) {
-  const [form, setForm] = useState<ProductPayload>(product ? toProductPayload(product) : { sku: "", name: "", category: "", description: "", price: 0, promotionPrice: null, stock: 0, imageUrl: "", active: true });
+  const [form, setForm] = useState<ProductPayload>(product ? toProductPayload(product) : { sku: "", name: "", category: "", description: "", price: 0, promotionPrice: null, stock: 0, imageUrl: "", active: true, highlights: "", supportsSevenDayReturn: true, afterSaleNote: "", scenarioTags: "" });
   const [saving, setSaving] = useState(false);
   async function submit(event: FormEvent) { event.preventDefault(); setSaving(true); await onSave(form); setSaving(false); }
-  return <div className="modal-backdrop"><form className="action-dialog product-editor" onSubmit={submit}><button className="icon-button modal-close" type="button" onClick={onClose} title="关闭" aria-label="关闭"><X size={19} /></button><span className="section-kicker">{product ? product.sku : "新商品"}</span><h2>{product ? "编辑商品" : "新增商品"}</h2><div className="form-grid"><label><span>SKU</span><input required maxLength={50} value={form.sku} onChange={(event) => setForm({ ...form, sku: event.target.value })} /></label><label><span>商品名称</span><input required maxLength={100} value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} /></label><label><span>分类</span><input required maxLength={50} value={form.category} onChange={(event) => setForm({ ...form, category: event.target.value })} /></label><label><span>库存</span><input required min="0" type="number" value={form.stock} onChange={(event) => setForm({ ...form, stock: Number(event.target.value) })} /></label><label><span>原价</span><input required min="0.01" step="0.01" type="number" value={form.price} onChange={(event) => setForm({ ...form, price: Number(event.target.value) })} /></label><label><span>促销价（可空）</span><input min="0.01" step="0.01" type="number" value={form.promotionPrice ?? ""} onChange={(event) => setForm({ ...form, promotionPrice: event.target.value ? Number(event.target.value) : null })} /></label></div><label><span>图片地址</span><input required type="url" maxLength={500} value={form.imageUrl} onChange={(event) => setForm({ ...form, imageUrl: event.target.value })} /></label><label><span>商品描述</span><textarea required rows={4} maxLength={1000} value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} /></label><label className="checkbox-row"><input type="checkbox" checked={form.active} onChange={(event) => setForm({ ...form, active: event.target.checked })} /><span>立即上架</span></label><div className="dialog-actions"><button className="secondary-button" type="button" onClick={onClose}>取消</button><button className="primary-button" disabled={saving}>{saving ? "正在保存" : "保存商品"}</button></div></form></div>;
+  return <div className="modal-backdrop"><form className="action-dialog product-editor" onSubmit={submit}><button className="icon-button modal-close" type="button" onClick={onClose} title="关闭" aria-label="关闭"><X size={19} /></button><span className="section-kicker">{product ? product.sku : "新商品"}</span><h2>{product ? "编辑商品" : "新增商品"}</h2><div className="form-grid"><label><span>SKU</span><input required maxLength={50} value={form.sku} onChange={(event) => setForm({ ...form, sku: event.target.value })} /></label><label><span>商品名称</span><input required maxLength={100} value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} /></label><label><span>分类</span><input required maxLength={50} value={form.category} onChange={(event) => setForm({ ...form, category: event.target.value })} /></label><label><span>库存</span><input required min="0" type="number" value={form.stock} onChange={(event) => setForm({ ...form, stock: Number(event.target.value) })} /></label><label><span>原价</span><input required min="0.01" step="0.01" type="number" value={form.price} onChange={(event) => setForm({ ...form, price: Number(event.target.value) })} /></label><label><span>促销价（可空）</span><input min="0.01" step="0.01" type="number" value={form.promotionPrice ?? ""} onChange={(event) => setForm({ ...form, promotionPrice: event.target.value ? Number(event.target.value) : null })} /></label></div><label><span>图片地址</span><input required type="url" maxLength={500} value={form.imageUrl} onChange={(event) => setForm({ ...form, imageUrl: event.target.value })} /></label><label><span>商品描述</span><textarea required rows={4} maxLength={1000} value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} /></label><label><span>商品亮点</span><textarea rows={2} maxLength={500} value={form.highlights} onChange={(event) => setForm({ ...form, highlights: event.target.value })} /></label><div className="form-grid"><label><span>适用场景标签</span><input maxLength={300} value={form.scenarioTags} onChange={(event) => setForm({ ...form, scenarioTags: event.target.value })} /></label><label><span>售后说明</span><input maxLength={500} value={form.afterSaleNote} onChange={(event) => setForm({ ...form, afterSaleNote: event.target.value })} /></label></div><label className="checkbox-row"><input type="checkbox" checked={form.supportsSevenDayReturn} onChange={(event) => setForm({ ...form, supportsSevenDayReturn: event.target.checked })} /><span>支持七天无理由退货</span></label><label className="checkbox-row"><input type="checkbox" checked={form.active} onChange={(event) => setForm({ ...form, active: event.target.checked })} /><span>立即上架</span></label><div className="dialog-actions"><button className="secondary-button" type="button" onClick={onClose}>取消</button><button className="primary-button" disabled={saving}>{saving ? "正在保存" : "保存商品"}</button></div></form></div>;
+}
+
+function ReviewAfterSaleDialog({ item, approved, onClose, onSubmit }: { item: AfterSale; approved: boolean; onClose: () => void; onSubmit: (remark: string, approvedAmount?: number) => Promise<void> }) {
+  const [remark, setRemark] = useState("");
+  const [approvedAmount, setApprovedAmount] = useState(item.refundAmount.toString());
+  const [submitting, setSubmitting] = useState(false);
+  async function submit(event: FormEvent) { event.preventDefault(); setSubmitting(true); await onSubmit(remark, approved ? Number(approvedAmount) : undefined); setSubmitting(false); }
+  return <div className="modal-backdrop"><form className="action-dialog" onSubmit={submit}><button className="icon-button modal-close" type="button" onClick={onClose} title="关闭" aria-label="关闭"><X size={19} /></button><span className="section-kicker">{item.afterSaleNo}</span><h2>{approved ? "批准售后申请" : "拒绝售后申请"}</h2>{approved && <label><span>审批金额</span><input required min="0.01" max={item.refundAmount} step="0.01" type="number" value={approvedAmount} onChange={(event) => setApprovedAmount(event.target.value)} /></label>}<label><span>处理说明</span><textarea required rows={3} maxLength={500} placeholder="填写审核意见" value={remark} onChange={(event) => setRemark(event.target.value)} /></label><div className="dialog-actions"><button className="secondary-button" type="button" onClick={onClose}>取消</button><button className={approved ? "primary-button" : "danger-button"} disabled={submitting}>{submitting ? "正在处理" : approved ? "确认批准" : "确认拒绝"}</button></div></form></div>;
 }
 
 function TextActionDialog({ kicker, title, label, placeholder, submitText, danger, onClose, onSubmit }: { kicker: string; title: string; label: string; placeholder: string; submitText: string; danger?: boolean; onClose: () => void; onSubmit: (value: string) => Promise<void> }) {
@@ -287,5 +316,5 @@ function UserCreator({ onClose, onSave }: { onClose: () => void; onSave: (payloa
 }
 
 function toProductPayload(product: Product, active = product.active): ProductPayload {
-  return { sku: product.sku, name: product.name, category: product.category, description: product.description, price: product.price, promotionPrice: product.promotionPrice, stock: product.stock, imageUrl: product.imageUrl, active };
+  return { sku: product.sku, name: product.name, category: product.category, description: product.description, price: product.price, promotionPrice: product.promotionPrice, stock: product.stock, imageUrl: product.imageUrl, active, highlights: product.highlights, supportsSevenDayReturn: product.supportsSevenDayReturn, afterSaleNote: product.afterSaleNote, scenarioTags: product.scenarioTags };
 }

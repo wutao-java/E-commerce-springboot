@@ -27,17 +27,34 @@ public class CartItem {
     @Column(nullable = false)
     private Integer quantity;
 
+    @Column(nullable = false)
+    private Boolean selected = true;
+
     protected CartItem() {
     }
 
     public CartItem(Long userId, Long productId, Integer quantity) {
+        this(userId, productId, quantity, true);
+    }
+
+    public CartItem(Long userId, Long productId, Integer quantity, Boolean selected) {
         this.userId = userId;
         this.productId = productId;
         this.quantity = quantity;
+        this.selected = selected == null || selected;
     }
 
     public void changeQuantity(int quantity) {
         this.quantity = quantity;
+    }
+
+    public void update(Integer quantity, Boolean selected) {
+        if (quantity != null) {
+            this.quantity = quantity;
+        }
+        if (selected != null) {
+            this.selected = selected;
+        }
     }
 
     public Long getId() {
@@ -54,5 +71,9 @@ public class CartItem {
 
     public Integer getQuantity() {
         return quantity;
+    }
+
+    public Boolean getSelected() {
+        return selected == null || selected;
     }
 }

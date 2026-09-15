@@ -64,6 +64,9 @@ if (-not (Test-Path .env)) {
 | `BACKEND_HOST_PORT` | `8080` | 后端暴露端口 |
 | `FRONTEND_HOST_PORT` | `5173` | 前端暴露端口 |
 | `CORS_ALLOWED_ORIGIN` | `http://localhost:5173` | 本地开发允许的前端来源 |
+| `AGENT_BASE_URL` | `http://host.docker.internal:8000` | 后端访问宿主机客服 Agent 的地址 |
+| `AGENT_CONNECT_TIMEOUT_MS` | `2000` | 客服 Agent 连接超时毫秒数 |
+| `AGENT_READ_TIMEOUT_MS` | `15000` | 客服 Agent 响应超时毫秒数 |
 
 默认密码只适合本机开发和演示。修改前端端口时，应同步修改 `CORS_ALLOWED_ORIGIN`。修改配置后先校验 Compose：
 
@@ -115,6 +118,9 @@ docker compose logs -f frontend
 | 角色 | 用户名 | 密码 | 初始余额 |
 | --- | --- | --- | --- |
 | 买家 | `buyer` | `buyer123` | `10000.00` |
+| 金卡买家 | `zhangsan` | `123456` | `100000.00` |
+| 银卡买家 | `lisi` | `123456` | `100000.00` |
+| 普通买家 | `wangwu` | `123456` | `100.00` |
 | 管理员 | `admin` | `admin123` | `0.00` |
 
 执行以下命令验证容器、API 和前端：
@@ -181,6 +187,7 @@ Set-Location D:\E-commerce-springboot\backend
 $env:DB_URL = "jdbc:mysql://localhost:3307/agent_commerce?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&createDatabaseIfNotExist=true"
 $env:DB_USERNAME = "commerce"
 $env:DB_PASSWORD = "commerce123"
+$env:AGENT_BASE_URL = "http://127.0.0.1:8000"
 .\mvnw.cmd spring-boot:run
 ```
 
@@ -193,6 +200,8 @@ npm run dev
 ```
 
 前端监听 `http://localhost:5173`，并将 `/api` 和 `/v3/api-docs` 代理到 `http://localhost:8080`。
+
+客服 Agent 是可选依赖。启动 `D:\E-commerce-agent` 后，商城客服通过其 `/chat` 接口应答；未启动时商城仍可使用，客服窗口会返回固定降级提示。
 
 ## 8. 数据库维护
 

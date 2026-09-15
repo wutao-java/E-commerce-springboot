@@ -54,6 +54,9 @@ public class AfterSale {
     @Column(name = "refund_amount", nullable = false, precision = 12, scale = 2)
     private BigDecimal refundAmount;
 
+    @Column(name = "approved_amount", precision = 12, scale = 2)
+    private BigDecimal approvedAmount;
+
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
 
@@ -77,10 +80,15 @@ public class AfterSale {
         this.updatedAt = now;
     }
 
-    public void approveReturn(String remark, LocalDateTime now) {
+    public void approveReturn(String remark, BigDecimal approvedAmount, LocalDateTime now) {
         this.status = AfterSaleStatus.WAITING_RETURN;
         this.adminRemark = remark;
+        this.approvedAmount = approvedAmount == null ? refundAmount : approvedAmount;
         this.updatedAt = now;
+    }
+
+    public void approveReturn(String remark, LocalDateTime now) {
+        approveReturn(remark, refundAmount, now);
     }
 
     public void submitReturn(String carrier, String trackingNo, LocalDateTime now) {
@@ -90,15 +98,32 @@ public class AfterSale {
         this.updatedAt = now;
     }
 
-    public void completeRefund(String remark, LocalDateTime now) {
+    public void completeRefund(String remark, BigDecimal approvedAmount, LocalDateTime now) {
         this.status = AfterSaleStatus.APPROVED;
         this.adminRemark = remark;
+        this.approvedAmount = approvedAmount == null ? refundAmount : approvedAmount;
         this.updatedAt = now;
+    }
+
+    public void completeRefund(String remark, LocalDateTime now) {
+        completeRefund(remark, refundAmount, now);
     }
 
     public void reject(String remark, LocalDateTime now) {
         this.status = AfterSaleStatus.REJECTED;
         this.adminRemark = remark;
+        this.updatedAt = now;
+    }
+
+    public void requestMoreInfo(String remark, LocalDateTime now) {
+        this.status = AfterSaleStatus.NEED_MORE_INFO;
+        this.adminRemark = remark;
+        this.updatedAt = now;
+    }
+
+    public void supplement(String reason, LocalDateTime now) {
+        this.status = AfterSaleStatus.PENDING;
+        this.reason = reason;
         this.updatedAt = now;
     }
 
@@ -148,6 +173,14 @@ public class AfterSale {
 
     public BigDecimal getRefundAmount() {
         return refundAmount;
+    }
+
+    public BigDecimal getApprovedAmount() {
+        return approvedAmount;
+    }
+
+    public BigDecimal getEffectiveRefundAmount() {
+        return approvedAmount == null ? refundAmount : approvedAmount;
     }
 
     public LocalDateTime getCreatedAt() {

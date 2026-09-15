@@ -339,11 +339,30 @@ h1 {
   line-height: 1.55;
 }
 
+.promotion-strip {
+  display: grid;
+  gap: 3px;
+  margin: -4px 0 14px;
+  padding: 9px 10px;
+  border-left: 3px solid var(--accent);
+  background: #fff4f1;
+  color: var(--accent-dark);
+  font-size: 12px;
+}
+
+.promotion-strip span {
+  color: var(--muted);
+}
+
+.promotion-strip.locked {
+  border-left-color: #8e9691;
+  background: #f3f5f2;
+}
+
 .product-footer {
-  display: flex;
-  justify-content: space-between;
+  display: grid;
   gap: 12px;
-  align-items: center;
+  align-items: start;
 }
 
 .product-footer > strong {
@@ -535,10 +554,35 @@ h1 {
 
 .cart-item {
   display: grid;
-  grid-template-columns: 58px minmax(0, 1fr) auto;
+  grid-template-columns: 18px 58px minmax(0, 1fr) auto;
   gap: 11px;
+  align-items: start;
   padding: 13px 0;
   border-top: 1px solid #e7eae7;
+}
+
+.cart-select {
+  width: 18px;
+  height: 18px;
+  margin: 20px 0 0;
+  accent-color: var(--green);
+}
+
+.cart-item.selected {
+  background: #fbfcfb;
+}
+
+.promotion-note,
+.unavailable-note {
+  font-size: 11px;
+}
+
+.promotion-note {
+  color: var(--accent-dark);
+}
+
+.unavailable-note {
+  color: var(--danger);
 }
 
 .cart-item > img {
@@ -1177,8 +1221,10 @@ h1 {
 .profile-form textarea,
 .action-dialog input,
 .action-dialog textarea,
+.action-dialog select,
 .product-editor input,
 .product-editor textarea,
+.product-editor select,
 .admin-toolbar select {
   width: 100%;
   min-height: 43px;
@@ -1195,8 +1241,10 @@ h1 {
 .profile-form textarea:focus,
 .action-dialog input:focus,
 .action-dialog textarea:focus,
+.action-dialog select:focus,
 .product-editor input:focus,
 .product-editor textarea:focus,
+.product-editor select:focus,
 .admin-toolbar select:focus {
   border-color: var(--blue);
   box-shadow: 0 0 0 3px rgba(49, 93, 124, 0.1);
@@ -1265,6 +1313,16 @@ h1 {
   display: flex;
   align-items: center;
   gap: 7px;
+}
+
+.product-actions {
+  width: 100%;
+}
+
+.product-actions .add-button,
+.product-actions .secondary-button {
+  min-width: 0;
+  flex: 1;
 }
 
 .view-button {
@@ -1349,6 +1407,11 @@ h1 {
 .status-badge.waiting_return {
   background: #fff0d9;
   color: #82520c;
+}
+
+.status-badge.need_more_info {
+  background: #f1e8d7;
+  color: #725216;
 }
 
 .status-badge.waiting_receipt {
@@ -1478,6 +1541,24 @@ h1 {
   background: #e8f0eb;
 }
 
+.readonly-field {
+  display: flex;
+  min-height: 43px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 9px 11px;
+  background: #f7f9f7;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.readonly-field strong {
+  color: var(--green);
+}
+
 .balance-summary span {
   display: flex;
   align-items: center;
@@ -1530,6 +1611,172 @@ h1 {
   color: var(--muted);
   font-size: 13px;
   text-align: center;
+}
+
+/* Policies and customer service */
+.policy-view {
+  display: grid;
+  gap: 26px;
+}
+
+.policy-view .page-heading {
+  margin-bottom: -4px;
+}
+
+.policy-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.policy-item {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr);
+  gap: 12px;
+}
+
+.policy-item > svg {
+  margin-top: 2px;
+  color: var(--green);
+}
+
+.policy-item h2 {
+  margin-bottom: 8px;
+  font-size: 18px;
+}
+
+.policy-item p,
+.faq-list p {
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.65;
+}
+
+.policy-item dl {
+  display: grid;
+  grid-template-columns: 70px minmax(0, 1fr);
+  gap: 7px 10px;
+  margin: 14px 0 0;
+  font-size: 12px;
+}
+
+.policy-item dt {
+  color: var(--muted);
+}
+
+.policy-item dd {
+  margin: 0;
+}
+
+.faq-list details {
+  border-bottom: 1px solid var(--line);
+  padding: 14px 2px;
+}
+
+.faq-list details:last-child {
+  border-bottom: 0;
+}
+
+.faq-list summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.faq-list summary span {
+  margin-right: 10px;
+  color: var(--accent-dark);
+  font-size: 11px;
+}
+
+.faq-list details p {
+  margin: 10px 0 0;
+}
+
+.service-drawer {
+  position: fixed;
+  z-index: 70;
+  top: 0;
+  right: 0;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  width: min(420px, 100%);
+  height: 100dvh;
+  border-left: 1px solid var(--line);
+  background: var(--surface);
+  box-shadow: -18px 0 50px rgba(25, 32, 29, 0.2);
+}
+
+.service-drawer > header {
+  display: flex;
+  min-height: 68px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 12px 18px;
+  border-bottom: 1px solid var(--line);
+}
+
+.service-drawer > header > div {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.service-drawer > header span {
+  display: grid;
+  gap: 2px;
+}
+
+.service-drawer > header small {
+  color: var(--muted);
+}
+
+.service-messages {
+  display: flex;
+  min-height: 0;
+  overflow-y: auto;
+  flex-direction: column;
+  gap: 10px;
+  padding: 18px;
+  background: #f3f5f2;
+}
+
+.service-message {
+  max-width: 86%;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface);
+  font-size: 13px;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+}
+
+.service-message.user {
+  align-self: end;
+  border-color: var(--green);
+  background: var(--green);
+  color: #ffffff;
+}
+
+.service-message.fallback {
+  border-left: 3px solid var(--accent);
+}
+
+.service-drawer > form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 40px;
+  gap: 8px;
+  padding: 14px;
+  border-top: 1px solid var(--line);
+}
+
+.service-drawer > form input {
+  min-width: 0;
+  min-height: 40px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 0 10px;
 }
 
 /* Dialogs */
@@ -1815,6 +2062,31 @@ h1 {
   line-height: 1.55;
 }
 
+.logistics-events {
+  display: grid;
+  min-width: 220px;
+  gap: 7px;
+}
+
+.logistics-events > small {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 3px 7px;
+}
+
+.logistics-events > small strong {
+  color: var(--green);
+}
+
+.logistics-events > small span {
+  grid-column: 2;
+  color: var(--muted);
+}
+
+.promotion-editor {
+  width: min(700px, 100%);
+}
+
 @media (max-width: 1160px) {
   .shop-topbar,
   .admin-topbar {
@@ -1875,7 +2147,7 @@ h1 {
 
   .shop-topbar nav,
   .admin-topbar nav {
-    grid-template-columns: repeat(5, minmax(70px, 1fr));
+    grid-template-columns: repeat(6, minmax(70px, 1fr));
     overflow-x: auto;
   }
 
@@ -1892,6 +2164,10 @@ h1 {
 
   .after-sale-row,
   .account-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .policy-list {
     grid-template-columns: 1fr;
   }
 
